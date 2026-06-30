@@ -1,0 +1,2 @@
+- [Auth setup](auth-setup.md) — bcrypt imported directly (`import bcrypt`), NOT via passlib (version conflict); Vite proxy must target `127.0.0.1:8000` not `localhost:8000`
+- [Frontend architecture](frontend-arch.md) — shadcn/ui components manually created in `frontend/src/components/ui/`; path alias `@/` = `frontend/src/`; tailwindcss-animate required in tailwind.config.js plugins

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
-import { User } from '../lib/types'
-import api from '../lib/api'
+import { useState } from 'react'
+import { User } from '@/lib/types'
+import api from '@/lib/api'
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(() => {

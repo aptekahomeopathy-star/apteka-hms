@@ -1,238 +1,207 @@
-import { useEffect, useState } from 'react'
-import { Plus, Receipt, Search } from 'lucide-react'
-import api from '../lib/api'
-import { Bill, Patient } from '../lib/types'
+import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Plus, Receipt, Search, IndianRupee } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import api from '@/lib/api'
+import { Bill, Patient } from '@/lib/types'
+import { formatDate, formatCurrency, cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import clsx from 'clsx'
 
-function BillModal({ bill, onClose, onSave }: { bill: Bill | null; onClose: () => void; onSave: () => void }) {
+const STATUS_STYLE: Record<string, any> = { paid: 'success', pending: 'warning', partial: 'info' }
+
+function BillForm({ bill, open, onClose, onSave }: { bill: Bill | null; open: boolean; onClose: () => void; onSave: () => void }) {
   const [patients, setPatients] = useState<Patient[]>([])
-  const [form, setForm] = useState({
-    patient_id: bill?.patient_id?.toString() || '',
-    consultation_fee: bill?.consultation_fee?.toString() || '0',
-    medicine_cost: bill?.medicine_cost?.toString() || '0',
-    other_charges: bill?.other_charges?.toString() || '0',
-    payment_mode: bill?.payment_mode || 'cash',
-    status: bill?.status || 'paid',
-    notes: bill?.notes || '',
-  })
+  const [form, setForm] = useState({ patient_id: '', consultation_fee: '0', medicine_cost: '0', other_charges: '0', payment_mode: 'cash', status: 'paid', notes: '' })
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => { api.get('/patients', { params: { limit: 500 } }).then(r => setPatients(r.data)) }, [])
+
   useEffect(() => {
-    api.get('/patients', { params: { limit: 500 } }).then(r => setPatients(r.data))
-  }, [])
+    if (bill) {
+      setForm({
+        patient_id: bill.patient_id?.toString() || '', consultation_fee: String(bill.consultation_fee || 0),
+        medicine_cost: String(bill.medicine_cost || 0), other_charges: String(bill.other_charges || 0),
+        payment_mode: bill.payment_mode || 'cash', status: bill.status || 'paid', notes: bill.notes || ''
+      })
+    } else {
+      setForm({ patient_id: '', consultation_fee: '500', medicine_cost: '0', other_charges: '0', payment_mode: 'cash', status: 'paid', notes: '' })
+    }
+  }, [bill, open])
 
   const total = (parseFloat(form.consultation_fee) || 0) + (parseFloat(form.medicine_cost) || 0) + (parseFloat(form.other_charges) || 0)
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault(); setLoading(true)
     try {
-      const data = {
-        ...form,
-        patient_id: parseInt(form.patient_id),
-        consultation_fee: parseFloat(form.consultation_fee) || 0,
-        medicine_cost: parseFloat(form.medicine_cost) || 0,
-        other_charges: parseFloat(form.other_charges) || 0,
-      }
-      if (bill) {
-        await api.put(`/bills/${bill.id}`, data)
-        toast.success('Bill updated')
-      } else {
-        await api.post('/bills', data)
-        toast.success('Bill created')
-      }
+      const data = { ...form, patient_id: parseInt(form.patient_id), consultation_fee: parseFloat(form.consultation_fee) || 0, medicine_cost: parseFloat(form.medicine_cost) || 0, other_charges: parseFloat(form.other_charges) || 0 }
+      if (bill) { await api.put(`/bills/${bill.id}`, data); toast.success('Bill updated') }
+      else { await api.post('/bills', data); toast.success('Bill created') }
       onSave()
-    } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Error saving bill')
-    } finally {
-      setLoading(false)
-    }
+    } catch (err: any) { toast.error(err.response?.data?.detail || 'Error saving bill')
+    } finally { setLoading(false) }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-lg">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-bold">{bill ? 'Edit Bill' : 'Create Bill'}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="label">Patient *</label>
-            <select className="input-field" value={form.patient_id} onChange={e => setForm({ ...form, patient_id: e.target.value })} required>
-              <option value="">Select patient</option>
-              {patients.map(p => <option key={p.id} value={p.id}>{p.name} ({p.patient_id})</option>)}
-            </select>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>{bill ? 'Edit Bill' : 'Create New Bill'}</DialogTitle></DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Patient *</Label>
+            <Select value={form.patient_id} onValueChange={v => setForm({ ...form, patient_id: v })}>
+              <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
+              <SelectContent>{patients.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name} — {p.patient_id}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="label">Consultation Fee (₹)</label>
-              <input type="number" className="input-field" value={form.consultation_fee}
-                onChange={e => setForm({ ...form, consultation_fee: e.target.value })} min="0" step="0.01" />
-            </div>
-            <div>
-              <label className="label">Medicine Cost (₹)</label>
-              <input type="number" className="input-field" value={form.medicine_cost}
-                onChange={e => setForm({ ...form, medicine_cost: e.target.value })} min="0" step="0.01" />
-            </div>
-            <div>
-              <label className="label">Other Charges (₹)</label>
-              <input type="number" className="input-field" value={form.other_charges}
-                onChange={e => setForm({ ...form, other_charges: e.target.value })} min="0" step="0.01" />
-            </div>
+          <div className="grid grid-cols-3 gap-3">
+            {[['consultation_fee', 'Consultation (₹)'], ['medicine_cost', 'Medicines (₹)'], ['other_charges', 'Other (₹)']].map(([f, l]) => (
+              <div key={f} className="space-y-1.5">
+                <Label className="text-xs">{l}</Label>
+                <Input type="number" min="0" step="0.01" value={(form as any)[f]} onChange={e => setForm({ ...form, [f]: e.target.value })} />
+              </div>
+            ))}
           </div>
-          <div className="bg-green-50 rounded-xl p-4 text-center">
-            <div className="text-sm text-gray-600">Total Amount</div>
-            <div className="text-3xl font-bold text-green-700">₹{total.toFixed(2)}</div>
+          <div className="bg-[#0F8B4C]/5 rounded-xl p-4 text-center border border-[#0F8B4C]/10">
+            <div className="text-xs text-gray-500 mb-1">Total Amount</div>
+            <div className="text-3xl font-bold text-[#0F8B4C]">{formatCurrency(total)}</div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Payment Mode</label>
-              <select className="input-field" value={form.payment_mode} onChange={e => setForm({ ...form, payment_mode: e.target.value })}>
-                <option value="cash">Cash</option>
-                <option value="card">Card</option>
-                <option value="upi">UPI</option>
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="cheque">Cheque</option>
-              </select>
+            <div className="space-y-1.5">
+              <Label>Payment Mode</Label>
+              <Select value={form.payment_mode} onValueChange={v => setForm({ ...form, payment_mode: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {['cash', 'upi', 'card', 'bank_transfer', 'cheque'].map(m => <SelectItem key={m} value={m} className="capitalize">{m.replace('_', ' ')}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
-            <div>
-              <label className="label">Status</label>
-              <select className="input-field" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-                <option value="paid">Paid</option>
-                <option value="pending">Pending</option>
-                <option value="partial">Partial</option>
-              </select>
+            <div className="space-y-1.5">
+              <Label>Status</Label>
+              <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="partial">Partial</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <div>
-            <label className="label">Notes</label>
-            <textarea className="input-field" rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+          <div className="space-y-1.5">
+            <Label>Notes</Label>
+            <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} placeholder="Optional notes" />
           </div>
-          <div className="flex gap-3">
-            <button type="button" className="btn-secondary flex-1" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary flex-1" disabled={loading}>
-              {loading ? 'Saving...' : bill ? 'Update' : 'Create Bill'}
-            </button>
-          </div>
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={loading || !form.patient_id}>{loading ? 'Saving...' : bill ? 'Update Bill' : 'Create Bill'}</Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
 export default function Billing() {
   const [bills, setBills] = useState<Bill[]>([])
   const [loading, setLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
   const [editBill, setEditBill] = useState<Bill | null>(null)
+  const [showForm, setShowForm] = useState(false)
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [searchParams] = useSearchParams()
 
-  const load = async () => {
+  useEffect(() => { if (searchParams.get('new')) setShowForm(true) }, [searchParams])
+
+  const load = useCallback(async () => {
     setLoading(true)
-    try {
-      const res = await api.get('/bills', { params: { limit: 200, status: filter || undefined } })
-      setBills(res.data)
-    } finally {
-      setLoading(false)
-    }
-  }
+    try { const res = await api.get('/bills', { params: { limit: 300, status: statusFilter || undefined } }); setBills(res.data) }
+    finally { setLoading(false) }
+  }, [statusFilter])
 
-  useEffect(() => { load() }, [filter])
+  useEffect(() => { load() }, [load])
 
-  const filtered = bills.filter(b =>
-    !search ||
-    b.patient?.name?.toLowerCase().includes(search.toLowerCase()) ||
-    b.bill_number?.toLowerCase().includes(search.toLowerCase())
-  )
-
-  const totalRevenue = filtered.filter(b => b.status === 'paid').reduce((sum, b) => sum + Number(b.total_amount), 0)
+  const filtered = bills.filter(b => !search || b.patient?.name?.toLowerCase().includes(search.toLowerCase()) || b.bill_number?.toLowerCase().includes(search.toLowerCase()))
+  const totalRevenue = filtered.filter(b => b.status === 'paid').reduce((s, b) => s + Number(b.total_amount), 0)
+  const totalPending = filtered.filter(b => b.status === 'pending').reduce((s, b) => s + Number(b.total_amount), 0)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 max-w-screen-xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Billing</h1>
-          <p className="text-gray-500 text-sm mt-1">Total: ₹{totalRevenue.toLocaleString()} collected</p>
+          <h1 className="text-xl font-bold text-gray-900">Billing</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{formatCurrency(totalRevenue)} collected · {formatCurrency(totalPending)} pending</p>
         </div>
-        <button className="btn-primary flex items-center gap-2" onClick={() => { setEditBill(null); setShowModal(true) }}>
-          <Plus size={18} /> New Bill
-        </button>
+        <Button onClick={() => { setEditBill(null); setShowForm(true) }} className="gap-2 shrink-0">
+          <Plus size={16} /> New Bill
+        </Button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input className="input-field pl-10" placeholder="Search by patient or bill number..."
-            value={search} onChange={e => setSearch(e.target.value)} />
+        <div className="relative flex-1 max-w-sm">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <Input className="pl-9" placeholder="Search by patient or bill number..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <div className="flex gap-2">
           {['', 'paid', 'pending', 'partial'].map(s => (
-            <button key={s} className={clsx('px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
-              filter === s ? 'bg-green-600 text-white' : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50')}
-              onClick={() => setFilter(s)}>
-              {s || 'All'}
-            </button>
+            <Button key={s} variant={statusFilter === s ? 'default' : 'outline'} size="sm" className="text-xs h-8 capitalize" onClick={() => setStatusFilter(s)}>{s || 'All'}</Button>
           ))}
         </div>
       </div>
 
       {loading ? (
-        <div className="space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="card h-16 animate-pulse" />)}</div>
+        <div className="space-y-2">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
       ) : filtered.length === 0 ? (
-        <div className="card text-center py-12">
-          <Receipt size={48} className="text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">No bills found</p>
-        </div>
+        <Card className="border-0 shadow-sm"><CardContent className="py-16 text-center">
+          <Receipt size={40} className="text-gray-200 mx-auto mb-3" />
+          <p className="text-gray-400 text-sm">No bills found</p>
+          <Button className="mt-4 gap-2" onClick={() => setShowForm(true)}><Plus size={15} /> Create Bill</Button>
+        </CardContent></Card>
       ) : (
-        <div className="card p-0 overflow-hidden">
+        <Card className="border-0 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Bill</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3 hidden sm:table-cell">Patient</th>
-                  <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Amount</th>
-                  <th className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3 hidden md:table-cell">Mode</th>
-                  <th className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Status</th>
-                  <th className="px-6 py-3"></th>
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/60">
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">Bill</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden sm:table-cell">Patient</th>
+                  <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">Amount</th>
+                  <th className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden md:table-cell">Mode</th>
+                  <th className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">Status</th>
+                  <th className="px-5 py-3 hidden lg:table-cell text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-5 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-50">
                 {filtered.map(b => (
-                  <tr key={b.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">{b.bill_number}</div>
-                      <div className="text-xs text-gray-500">{new Date(b.bill_date).toLocaleDateString('en-IN')}</div>
+                  <tr key={b.id} className="hover:bg-gray-50/60 transition-colors">
+                    <td className="px-5 py-3.5">
+                      <div className="font-mono text-sm font-medium text-gray-900">{b.bill_number}</div>
                     </td>
-                    <td className="px-6 py-4 hidden sm:table-cell text-sm text-gray-600">{b.patient?.name}</td>
-                    <td className="px-6 py-4 text-right font-semibold text-gray-900">₹{Number(b.total_amount).toLocaleString()}</td>
-                    <td className="px-6 py-4 text-center text-sm text-gray-500 hidden md:table-cell capitalize">{b.payment_mode || '-'}</td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={clsx('text-xs px-2 py-1 rounded-full font-medium',
-                        b.status === 'paid' ? 'bg-green-100 text-green-700' :
-                        b.status === 'partial' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-red-100 text-red-700')}>
-                        {b.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <button className="text-sm text-green-600 hover:text-green-700 font-medium"
-                        onClick={() => { setEditBill(b); setShowModal(true) }}>Edit</button>
+                    <td className="px-5 py-3.5 hidden sm:table-cell"><span className="text-sm text-gray-700">{b.patient?.name}</span></td>
+                    <td className="px-5 py-3.5 text-right"><span className="font-bold text-gray-900">{formatCurrency(Number(b.total_amount))}</span></td>
+                    <td className="px-5 py-3.5 text-center hidden md:table-cell"><span className="text-xs text-gray-500 capitalize">{b.payment_mode?.replace('_', ' ') || '—'}</span></td>
+                    <td className="px-5 py-3.5 text-center"><Badge variant={STATUS_STYLE[b.status] || 'outline'} className="text-xs capitalize">{b.status}</Badge></td>
+                    <td className="px-5 py-3.5 hidden lg:table-cell"><span className="text-xs text-gray-400">{formatDate(b.bill_date)}</span></td>
+                    <td className="px-5 py-3.5">
+                      <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => { setEditBill(b); setShowForm(true) }}>Edit</Button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       )}
 
-      {showModal && (
-        <BillModal bill={editBill} onClose={() => setShowModal(false)} onSave={() => { setShowModal(false); load() }} />
-      )}
+      <BillForm bill={editBill} open={showForm} onClose={() => { setShowForm(false); setEditBill(null) }} onSave={() => { setShowForm(false); setEditBill(null); load() }} />
     </div>
   )
 }

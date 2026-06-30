@@ -1,127 +1,126 @@
-import { useEffect, useState } from 'react'
-import { Plus, Search, Eye, Edit, Trash2, User } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import api from '../lib/api'
-import { Patient } from '../lib/types'
+import { useEffect, useState, useCallback } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Plus, Search, Eye, Edit2, Trash2, Users, Phone, User } from 'lucide-react'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import api from '@/lib/api'
+import { Patient } from '@/lib/types'
+import { formatDate, cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
-function PatientModal({
-  patient,
-  onClose,
-  onSave
-}: {
-  patient: Patient | null
-  onClose: () => void
-  onSave: () => void
-}) {
-  const [form, setForm] = useState({
-    name: patient?.name || '',
-    age: patient?.age?.toString() || '',
-    gender: patient?.gender || '',
-    phone: patient?.phone || '',
-    email: patient?.email || '',
-    address: patient?.address || '',
-    occupation: patient?.occupation || '',
-    chief_complaint: patient?.chief_complaint || '',
-    past_history: patient?.past_history || '',
-    family_history: patient?.family_history || '',
-    personal_history: patient?.personal_history || '',
-  })
+const EMPTY_FORM = {
+  name: '', age: '', gender: '', phone: '', email: '', address: '', occupation: '',
+  chief_complaint: '', past_history: '', family_history: '', personal_history: '',
+}
+
+function PatientForm({ patient, open, onClose, onSave }: { patient: Patient | null; open: boolean; onClose: () => void; onSave: () => void }) {
+  const [form, setForm] = useState(EMPTY_FORM)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (patient) {
+      setForm({
+        name: patient.name || '', age: patient.age?.toString() || '', gender: patient.gender || '',
+        phone: patient.phone || '', email: patient.email || '', address: patient.address || '',
+        occupation: patient.occupation || '', chief_complaint: patient.chief_complaint || '',
+        past_history: patient.past_history || '', family_history: patient.family_history || '',
+        personal_history: patient.personal_history || '',
+      })
+    } else {
+      setForm(EMPTY_FORM)
+    }
+  }, [patient, open])
+
+  const f = (field: string) => (val: string) => setForm(prev => ({ ...prev, [field]: val }))
+  const fi = (field: string) => ({ value: (form as any)[field], onChange: (e: any) => setForm(prev => ({ ...prev, [field]: e.target.value })) })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      const data = { ...form, age: form.age ? parseInt(form.age) : null }
-      if (patient) {
-        await api.put(`/patients/${patient.id}`, data)
-        toast.success('Patient updated')
-      } else {
-        await api.post('/patients', data)
-        toast.success('Patient registered')
-      }
+      const data = { ...form, age: form.age ? parseInt(form.age) : null, gender: form.gender || null }
+      if (patient) { await api.put(`/patients/${patient.id}`, data); toast.success('Patient updated') }
+      else { await api.post('/patients', data); toast.success('Patient registered') }
       onSave()
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Error saving patient')
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
 
-  const f = (field: string) => ({
-    value: (form as any)[field],
-    onChange: (e: any) => setForm({ ...form, [field]: e.target.value })
-  })
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-bold">{patient ? 'Edit Patient' : 'Register New Patient'}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <label className="label">Full Name *</label>
-              <input className="input-field" {...f('name')} required placeholder="Patient name" />
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{patient ? 'Edit Patient' : 'Register New Patient'}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2 space-y-1.5">
+              <Label>Full Name *</Label>
+              <Input {...fi('name')} required placeholder="Patient's full name" />
             </div>
-            <div>
-              <label className="label">Age</label>
-              <input type="number" className="input-field" {...f('age')} placeholder="Age in years" />
+            <div className="space-y-1.5">
+              <Label>Age</Label>
+              <Input type="number" {...fi('age')} placeholder="Age in years" min="0" max="150" />
             </div>
-            <div>
-              <label className="label">Gender</label>
-              <select className="input-field" {...f('gender')}>
-                <option value="">Select gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
+            <div className="space-y-1.5">
+              <Label>Gender</Label>
+              <Select value={form.gender} onValueChange={f('gender')}>
+                <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div>
-              <label className="label">Phone</label>
-              <input className="input-field" {...f('phone')} placeholder="+91 9876543210" />
+            <div className="space-y-1.5">
+              <Label>Phone</Label>
+              <Input {...fi('phone')} placeholder="+91 98765 43210" />
             </div>
-            <div>
-              <label className="label">Email</label>
-              <input type="email" className="input-field" {...f('email')} placeholder="patient@email.com" />
+            <div className="space-y-1.5">
+              <Label>Email</Label>
+              <Input type="email" {...fi('email')} placeholder="patient@email.com" />
             </div>
-            <div>
-              <label className="label">Occupation</label>
-              <input className="input-field" {...f('occupation')} placeholder="Occupation" />
+            <div className="space-y-1.5">
+              <Label>Occupation</Label>
+              <Input {...fi('occupation')} placeholder="Occupation" />
             </div>
-            <div className="md:col-span-2">
-              <label className="label">Address</label>
-              <textarea className="input-field" rows={2} {...f('address')} placeholder="Full address" />
+            <div className="sm:col-span-2 space-y-1.5">
+              <Label>Address</Label>
+              <Textarea {...fi('address')} placeholder="Full address" rows={2} />
             </div>
-            <div className="md:col-span-2">
-              <label className="label">Chief Complaint</label>
-              <textarea className="input-field" rows={2} {...f('chief_complaint')} placeholder="Main complaints" />
+            <div className="sm:col-span-2 space-y-1.5">
+              <Label>Chief Complaint</Label>
+              <Textarea {...fi('chief_complaint')} placeholder="Main presenting complaints" rows={2} />
             </div>
-            <div>
-              <label className="label">Past History</label>
-              <textarea className="input-field" rows={2} {...f('past_history')} placeholder="Past medical history" />
+            <div className="space-y-1.5">
+              <Label>Past History</Label>
+              <Textarea {...fi('past_history')} placeholder="Past medical history, surgeries, allergies" rows={2} />
             </div>
-            <div>
-              <label className="label">Family History</label>
-              <textarea className="input-field" rows={2} {...f('family_history')} placeholder="Family medical history" />
+            <div className="space-y-1.5">
+              <Label>Family History</Label>
+              <Textarea {...fi('family_history')} placeholder="Family medical history" rows={2} />
             </div>
-            <div className="md:col-span-2">
-              <label className="label">Personal History</label>
-              <textarea className="input-field" rows={2} {...f('personal_history')} placeholder="Diet, habits, lifestyle" />
+            <div className="sm:col-span-2 space-y-1.5">
+              <Label>Personal History</Label>
+              <Textarea {...fi('personal_history')} placeholder="Diet, habits, lifestyle, occupation" rows={2} />
             </div>
           </div>
-          <div className="flex gap-3 pt-2">
-            <button type="button" className="btn-secondary flex-1" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary flex-1" disabled={loading}>
-              {loading ? 'Saving...' : patient ? 'Update' : 'Register'}
-            </button>
-          </div>
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={loading}>{loading ? 'Saving...' : patient ? 'Update Patient' : 'Register Patient'}</Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -129,112 +128,109 @@ export default function Patients() {
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [showModal, setShowModal] = useState(false)
   const [editPatient, setEditPatient] = useState<Patient | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
-  const loadPatients = async () => {
+  useEffect(() => { if (searchParams.get('new')) setShowForm(true) }, [searchParams])
+
+  const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await api.get('/patients', { params: { search: search || undefined, limit: 200 } })
+      const res = await api.get('/patients', { params: { search: search || undefined, limit: 500 } })
       setPatients(res.data)
-    } finally {
-      setLoading(false)
-    }
-  }
+    } finally { setLoading(false) }
+  }, [search])
 
-  useEffect(() => { loadPatients() }, [search])
+  useEffect(() => {
+    const t = setTimeout(load, 300)
+    return () => clearTimeout(t)
+  }, [load])
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this patient?')) return
-    try {
-      await api.delete(`/patients/${id}`)
-      toast.success('Patient deleted')
-      loadPatients()
-    } catch {
-      toast.error('Failed to delete patient')
-    }
+    if (!confirm('Delete this patient and all their records?')) return
+    try { await api.delete(`/patients/${id}`); toast.success('Patient deleted'); load() }
+    catch { toast.error('Failed to delete patient') }
   }
 
+  const genderBadge: Record<string, any> = { male: 'info', female: 'purple', other: 'warning' }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 max-w-screen-xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Patients</h1>
-          <p className="text-gray-500 text-sm mt-1">{patients.length} patients registered</p>
+          <h1 className="text-xl font-bold text-gray-900">Patients</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{patients.length} patients registered</p>
         </div>
-        <button
-          className="btn-primary flex items-center gap-2"
-          onClick={() => { setEditPatient(null); setShowModal(true) }}
-        >
-          <Plus size={18} /> New Patient
-        </button>
+        <Button onClick={() => { setEditPatient(null); setShowForm(true) }} className="gap-2 shrink-0">
+          <Plus size={16} /> New Patient
+        </Button>
       </div>
 
-      <div className="relative">
-        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          className="input-field pl-10"
-          placeholder="Search by name, phone, or patient ID..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+      <div className="relative max-w-md">
+        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <Input className="pl-9" placeholder="Search by name, phone, or patient ID..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       {loading ? (
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="card animate-pulse h-16" />
-          ))}
-        </div>
+        <div className="space-y-2">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
       ) : patients.length === 0 ? (
-        <div className="card text-center py-12">
-          <User size={48} className="text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">No patients found</p>
-          <button className="btn-primary mt-4" onClick={() => { setEditPatient(null); setShowModal(true) }}>
-            Register First Patient
-          </button>
-        </div>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="py-16 text-center">
+            <Users size={40} className="text-gray-200 mx-auto mb-3" />
+            <p className="text-gray-400 text-sm">{search ? 'No patients match your search' : 'No patients registered yet'}</p>
+            {!search && <Button className="mt-4 gap-2" onClick={() => setShowForm(true)}><Plus size={15} /> Register First Patient</Button>}
+          </CardContent>
+        </Card>
       ) : (
-        <div className="card p-0 overflow-hidden">
+        <Card className="border-0 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Patient</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3 hidden sm:table-cell">Contact</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3 hidden md:table-cell">Chief Complaint</th>
-                  <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Actions</th>
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/60">
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">Patient</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden sm:table-cell">Contact</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden md:table-cell">Complaint</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden lg:table-cell">Registered</th>
+                  <th className="px-5 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-50">
                 {patients.map(p => (
-                  <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
+                  <tr key={p.id} className="hover:bg-gray-50/60 transition-colors">
+                    <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-green-100 text-green-700 rounded-full flex items-center justify-center font-semibold text-sm">
-                          {p.name[0]}
+                        <div className="w-8 h-8 rounded-full bg-[#0F8B4C]/10 text-[#0F8B4C] flex items-center justify-center font-bold text-sm shrink-0">
+                          {p.name[0].toUpperCase()}
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">{p.name}</div>
-                          <div className="text-xs text-gray-500">{p.patient_id} · {p.age ? `${p.age}yr` : ''} {p.gender || ''}</div>
+                          <div className="font-medium text-gray-900 text-sm">{p.name}</div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-xs text-gray-400">{p.patient_id}</span>
+                            {p.age && <span className="text-xs text-gray-400">· {p.age}yr</span>}
+                            {p.gender && <Badge variant={genderBadge[p.gender] || 'outline'} className="text-[10px] px-1.5 py-0 h-4">{p.gender}</Badge>}
+                          </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 hidden sm:table-cell text-sm text-gray-600">{p.phone || '-'}</td>
-                    <td className="px-6 py-4 hidden md:table-cell text-sm text-gray-600 max-w-xs truncate">{p.chief_complaint || '-'}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link to={`/patients/${p.id}`} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View">
-                          <Eye size={16} />
-                        </Link>
-                        <button className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Edit"
-                          onClick={() => { setEditPatient(p); setShowModal(true) }}>
-                          <Edit size={16} />
-                        </button>
-                        <button className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete"
-                          onClick={() => handleDelete(p.id)}>
-                          <Trash2 size={16} />
-                        </button>
+                    <td className="px-5 py-3.5 hidden sm:table-cell">
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <Phone size={12} className="text-gray-400" />
+                        {p.phone || <span className="text-gray-300">—</span>}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 hidden md:table-cell">
+                      <span className="text-sm text-gray-500 line-clamp-1 max-w-[200px]">{p.chief_complaint || '—'}</span>
+                    </td>
+                    <td className="px-5 py-3.5 hidden lg:table-cell">
+                      <span className="text-xs text-gray-400">{formatDate(p.created_at)}</span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon-sm" onClick={() => navigate(`/patients/${p.id}`)} title="View"><Eye size={14} /></Button>
+                        <Button variant="ghost" size="icon-sm" onClick={() => { setEditPatient(p); setShowForm(true) }} title="Edit"><Edit2 size={14} /></Button>
+                        <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(p.id)} title="Delete" className="text-red-500 hover:text-red-600 hover:bg-red-50"><Trash2 size={14} /></Button>
                       </div>
                     </td>
                   </tr>
@@ -242,16 +238,15 @@ export default function Patients() {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       )}
 
-      {showModal && (
-        <PatientModal
-          patient={editPatient}
-          onClose={() => setShowModal(false)}
-          onSave={() => { setShowModal(false); loadPatients() }}
-        />
-      )}
+      <PatientForm
+        patient={editPatient}
+        open={showForm}
+        onClose={() => { setShowForm(false); setEditPatient(null) }}
+        onSave={() => { setShowForm(false); setEditPatient(null); load() }}
+      />
     </div>
   )
 }
