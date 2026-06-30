@@ -49,10 +49,8 @@ export default function Login() {
       {/* Left branding panel */}
       <div className="hidden lg:flex flex-col justify-between w-[420px] bg-gradient-to-b from-[#0F8B4C] to-[#0a6e3c] p-10 text-white shrink-0">
         <div>
-          <div className="flex items-center gap-3 mb-12">
-            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-              <span className="text-white font-black text-2xl">A</span>
-            </div>
+          <div className="flex items-center gap-4 mb-12">
+            <img src="/apteka-logo.png" alt="APTEKA Logo" className="w-16 h-16 object-contain drop-shadow-md" />
             <div>
               <div className="font-black text-xl tracking-wide">APTEKA</div>
               <div className="text-green-200 text-xs font-medium tracking-widest uppercase">Homoeopathy HMS</div>
@@ -88,9 +86,7 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           <div className="text-center mb-8 lg:hidden">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-[#0F8B4C] rounded-2xl mb-3 shadow-lg">
-              <span className="text-white font-black text-2xl">A</span>
-            </div>
+            <img src="/apteka-logo.png" alt="APTEKA Logo" className="w-20 h-20 object-contain mx-auto mb-2 drop-shadow" />
             <h2 className="text-2xl font-bold text-gray-900">APTEKA HMS</h2>
             <p className="text-gray-500 text-sm mt-1">Homoeopathy Management System</p>
           </div>

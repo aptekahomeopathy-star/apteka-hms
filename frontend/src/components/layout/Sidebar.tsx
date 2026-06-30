@@ -43,12 +43,17 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className={cn(
-        "flex items-center gap-3 px-4 py-5 border-b border-gray-100",
+        "flex items-center gap-3 px-4 py-3 border-b border-gray-100",
         collapsed && "justify-center px-2"
       )}>
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0F8B4C] to-[#0d7a42] flex items-center justify-center shadow-md shrink-0">
-          <span className="text-white font-black text-lg leading-none">A</span>
-        </div>
+        <img
+          src="/apteka-logo.png"
+          alt="APTEKA Homoeopathy"
+          className={cn(
+            "object-contain shrink-0",
+            collapsed ? "w-9 h-9" : "w-10 h-10"
+          )}
+        />
         {!collapsed && (
           <div className="min-w-0">
             <div className="font-black text-[#0F8B4C] text-sm leading-tight tracking-wide">APTEKA</div>
