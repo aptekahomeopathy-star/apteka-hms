@@ -9,12 +9,12 @@ from .routers import auth, patients, appointments, prescriptions, billing, expen
 import os
 
 Base.metadata.create_all(bind=engine)
+from fastapi import FastAPI
+from app.routers.patients import router as patient_router
 
-app = FastAPI(
-    title="APTEKA HMS API",
-    description="Homeopathy Management System API",
-    version="1.0.0"
-)
+app = FastAPI()
+
+app.include_router(patient_router)
 
 app.add_middleware(
     CORSMiddleware,
