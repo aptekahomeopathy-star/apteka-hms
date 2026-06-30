@@ -1,7 +1,4 @@
-from datetime import date
-
 from fastapi import APIRouter
-
 from app.schemas.patient import PatientCreate
 
 router = APIRouter(
@@ -12,8 +9,7 @@ router = APIRouter(
 
 @router.post("/")
 def register_patient(patient: PatientCreate):
-
     return {
         "message": "Patient Registered Successfully",
-        "patient": patient
+        "patient": patient.model_dump()
     }
