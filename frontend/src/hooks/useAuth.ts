@@ -1,35 +1,47 @@
 import { useState } from 'react'
 import { User } from '@/lib/types'
-import api from '@/lib/api'
+
+const demoUser: User = {
+  id: 1,
+  username: 'admin',
+  email: 'admin@apteka.com',
+  full_name: 'Dr. Siddhartha Kumar',
+  is_admin: true,
+  created_at: new Date().toISOString(),
+}
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem('user')
-    return stored ? JSON.parse(stored) : null
-  })
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'))
+  const [user, setUser] = useState<User | null>(demoUser)
+  const [token, setToken] = useState<string | null>('development-token')
 
   const login = async (username: string, password: string) => {
-    const res = await api.post('/auth/login', { username, password })
-    const { access_token, user: userData } = res.data
-    localStorage.setItem('token', access_token)
-    localStorage.setItem('user', JSON.stringify(userData))
-    setToken(access_token)
-    setUser(userData)
-    return userData
+    console.log('Demo login', username, password)
+    setUser(demoUser)
+    setToken('development-token')
+    return demoUser
   }
 
-  const register = async (data: { username: string; email: string; password: string; full_name?: string }) => {
-    const res = await api.post('/auth/register', data)
-    return res.data
+  const register = async (data: {
+    username: string
+    email: string
+    password: string
+    full_name?: string
+  }) => {
+    console.log('Demo register', data)
+    return demoUser
   }
 
   const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    setToken(null)
     setUser(null)
+    setToken(null)
   }
 
-  return { user, token, login, register, logout, isAuthenticated: !!token }
+  return {
+    user,
+    token,
+    login,
+    register,
+    logout,
+    isAuthenticated: true,
+  }
 }
