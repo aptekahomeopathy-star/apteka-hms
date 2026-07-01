@@ -5,7 +5,7 @@ stack = "BEST_EFFORT_FALLBACK"
 
 [nix]
 channel = "stable-25_05"
-packages = ["libxcrypt", "lsof"]
+packages = ["libxcrypt", "lsof", "nano", "mailutils"]
 
 [workflows]
 runButton = "Project"
@@ -62,6 +62,14 @@ externalPort = 3001
 [[ports]]
 localPort = 5003
 externalPort = 3002
+
+[[ports]]
+localPort = 5004
+externalPort = 3003
+
+[[ports]]
+localPort = 8000
+externalPort = 8000
 
 [deployment]
 deploymentTarget = "autoscale"

@@ -6,7 +6,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from app.database.base import Base
+from app.database import Base
 
 
 class PrescriptionItem(Base):

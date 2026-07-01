@@ -1,4 +1,3 @@
-from sqlalchemy.orm import relationship
 from sqlalchemy import (
     Column,
     Integer,
@@ -9,7 +8,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.sql import func
 
-from app.database.base import Base
+from app.database import Base
 
 
 class Patient(Base):
@@ -57,17 +56,24 @@ class Patient(Base):
 
     referred_by = Column(String(100))
 
+    # Registration Numbers
+    registration_number = Column(String(20), unique=True, index=True)
+    new_opd_no = Column(String(20), unique=True, index=True)
+
+    # Identity
+    aadhaar_number = Column(String(20))
+    emergency_contact = Column(String(20))
+
+    # Clinical
+    chief_complaint = Column(Text)
+    diagnosis = Column(Text)
+    remarks = Column(Text)
+
+    # Status
+    status = Column(String(30), default="Active")
+
+    # Profile Photo
     profile_photo = Column(String(255))
-    visits = relationship(
-        "Visit",
-        back_populates="patient",
-        cascade="all, delete-orphan"
-    )
-    cases = relationship(
-        "Case",
-        back_populates="patient",
-        cascade="all, delete-orphan"
-    )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     updated_at = Column(

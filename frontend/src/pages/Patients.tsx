@@ -16,8 +16,27 @@ import { formatDate, cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
 const EMPTY_FORM = {
-  name: '', age: '', gender: '', phone: '', email: '', address: '', occupation: '',
-  chief_complaint: '', past_history: '', family_history: '', personal_history: '',
+  old_opd_no: '',
+  full_name: '',
+  father_or_husband_name: '',
+  date_of_birth: '',
+  age: '',
+  gender: '',
+  phone: '',
+  alternate_phone: '',
+  email: '',
+  address: '',
+  city: '',
+  state: '',
+  pincode: '',
+  occupation: '',
+  marital_status: '',
+  blood_group: '',
+  referred_by: '',
+  emergency_contact: '',
+  chief_complaint: '',
+  diagnosis: '',
+  remarks: '',
 }
 
 function PatientForm({ patient, open, onClose, onSave }: { patient: Patient | null; open: boolean; onClose: () => void; onSave: () => void }) {
@@ -27,7 +46,7 @@ function PatientForm({ patient, open, onClose, onSave }: { patient: Patient | nu
   useEffect(() => {
     if (patient) {
       setForm({
-        name: patient.name || '', age: patient.age?.toString() || '', gender: patient.gender || '',
+        full_name: patient.full_name || '',age: patient.age?.toString() || '', gender: patient.gender || '',
         phone: patient.phone || '', email: patient.email || '', address: patient.address || '',
         occupation: patient.occupation || '', chief_complaint: patient.chief_complaint || '',
         past_history: patient.past_history || '', family_history: patient.family_history || '',
@@ -64,7 +83,7 @@ function PatientForm({ patient, open, onClose, onSave }: { patient: Patient | nu
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2 space-y-1.5">
               <Label>Full Name *</Label>
-              <Input {...fi('name')} required placeholder="Patient's full name" />
+              <Input {...fi('full_name')}required placeholder="Patient's full name" />
             </div>
             <div className="space-y-1.5">
               <Label>Age</Label>
