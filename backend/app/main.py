@@ -6,9 +6,8 @@ from app.database import Base, engine
 import app.models
 
 from app.routers.patients import router as patient_router
-
+from app.routers.visits import router as visit_router
 # Create tables if they don't exist
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="APTEKA HMS",
@@ -16,7 +15,7 @@ app = FastAPI(
 )
 
 app.include_router(patient_router, prefix="/api")
-
+app.include_router(visit_router, prefix="/api")
 
 @app.get("/")
 def root():

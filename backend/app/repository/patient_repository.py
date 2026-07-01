@@ -46,3 +46,21 @@ def update_patient(db: Session, patient_id: int, data: dict):
     db.refresh(patient)
 
     return patient
+from sqlalchemy import or_
+
+def search_patients(db: Session, query: str):
+    return (
+        db.query(Patient)
+        .filter(
+            or_(
+                Patient.full_name.ilike(f"%{query}%"),
+                Patient.phone.ilike(f"%{query}%"),
+                Patient.patient_id.ilike(f"%{query}%"),
+                Patient.registration_number.ilike(f"%{query}%"),
+                Patient.old_opd_no.ilike(f"%{query}%"),
+                Patient.new_opd_no.ilike(f"%{query}%"),
+            )
+        )
+        .order_by(Patient.id.desc())
+        .all()
+    )

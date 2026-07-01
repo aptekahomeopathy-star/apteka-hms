@@ -9,6 +9,7 @@ from app.repository.patient_repository import (
     get_all_patients,
     get_patient_by_id,
     update_patient,
+    search_patients,
 )
 router = APIRouter(
     prefix="/patients",
@@ -31,6 +32,13 @@ def list_patients(
     db: Session = Depends(get_db),
 ):
     return get_all_patients(db)
+@router.get("/search")
+def search_patient(
+    q: str,
+    db: Session = Depends(get_db),
+):
+    return search_patients(db, q)
+
 @router.get("/{patient_id}")
 def get_patient(
     patient_id: int,
